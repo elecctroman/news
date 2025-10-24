@@ -226,6 +226,7 @@ $csrf = new Csrf();
 $limiter = new RateLimiter();
 $mailer = new Mailer($config);
 try {
+    $encryptionKey = (string)($config['security']['encryption_key'] ?? '');
     $crypto = new Crypto($encryptionKey);
 } catch (Throwable $e) {
     renderSetupNotice(['Şifreleme anahtarı geçerli değil. 32 bayt uzunluğunda olmalıdır.'], $e);

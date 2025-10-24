@@ -1,11 +1,15 @@
 RewriteEngine On
 
-# Mevcut dosya veya klasörlere doğrudan erişimi koru.
+# Var olan dosya veya dizinleri doğrudan sun
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# Diğer tüm istekleri public dizinine yönlendir.
-RewriteRule ^(.*)$ public/$1 [L]
+# Kök isteği uygulamanın ön denetleyicisine yönlendirilir
+RewriteRule ^$ public/index.php [L]
 
+# Diğer tüm istekler public/ altına taşınır (ör. assets, uploads)
+RewriteRule ^(.+)$ public/$1 [L]
+
+# mod_rewrite kullanılamıyorsa ön denetleyiciyi yedek olarak çalıştır
 FallbackResource /public/index.php
