@@ -10,14 +10,6 @@ class Crypto
 {
     public function __construct(private string $key)
     {
-        if (str_starts_with($this->key, 'base64:')) {
-            $decoded = base64_decode(substr($this->key, 7), true);
-            if ($decoded === false) {
-                throw new RuntimeException('Geçersiz şifreleme anahtarı.');
-            }
-            $this->key = $decoded;
-        }
-
         if (strlen($this->key) !== 32) {
             throw new RuntimeException('AES-256 için anahtar 32 bayt olmalıdır.');
         }

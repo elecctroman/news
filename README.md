@@ -4,7 +4,7 @@ Bu depo, PHP 8.2, vanilla JavaScript ve CSS kullanarak güvenli bir dijital ür�
 
 ## Öne Çıkan Özellikler
 
-- **Manuel Kurulum:** `config/config.php` dosyasında veritabanı ve şifreleme ayarlarını yapın, ardından `scripts/schema.sql` dosyasını çalıştırarak gerekli tabloları oluşturun.
+- **Manuel Kurulum:** `config/config.php` dosyasında veritabanı bağlantı bilgilerini girin, ardından `scripts/schema.sql` dosyasını çalıştırarak gerekli tabloları oluşturun.
 - **Kimlik ve Güvenlik:** PDO + prepared statements, `password_hash`, CSRF koruması, dosya tabanlı rate limit, e-posta doğrulama, parola sıfırlama ve TOTP tabanlı 2FA (kurtarma kodları dahil).
 - **Yetkilendirme:** Roller (`super_admin`, `operator`, `customer`), rol/izin matrisi ve admin/front guard orta katmanları.
 - **Ürün Yönetimi:** Ürün CRUD, varyant ekleme, AES-256-GCM ile şifrelenmiş E-PIN ve hesap içerikleri için CSV içe aktarma panelleri.
@@ -18,15 +18,16 @@ Bu depo, PHP 8.2, vanilla JavaScript ve CSS kullanarak güvenli bir dijital ür�
 
 1. Depoyu web sunucusunun çalışma dizinine yerleştirin ve `public/` klasörünü web kök dizini olarak işaretleyin.
 2. `storage/cache`, `storage/logs`, `storage/backups` klasörlerinin PHP tarafından yazılabilir olduğundan emin olun.
-3. `config/config.php` dosyasını açarak veritabanı DSN, kullanıcı adı/parola ve 32 baytlık şifreleme anahtarını girin. Anahtar üretmek için `php -r "echo 'base64:' . base64_encode(random_bytes(32));"` komutunu kullanabilirsiniz.
+3. `config/config.php` dosyasını açarak veritabanı sunucusu, adı, kullanıcı adı, parola ve karakter setini tanımlayın. Uygulama bu bilgilerden bağlantı DSN'ini ve şifreleme anahtarını otomatik türetir; bu nedenle güçlü bir veritabanı parolası kullanmanız önerilir.
 4. MySQL/MariaDB veritabanınızı oluşturun ve `scripts/schema.sql` dosyasını çalıştırarak tabloları kurun (`mysql -u root -p epin < scripts/schema.sql`).
 5. En az bir yönetici hesabı eklemek için aşağıdaki "Örnek Veriler" bölümündeki SQL betiğini çalıştırabilir veya kendi kayıtlarınızı oluşturabilirsiniz (şifreler PHP'nin `password_hash()` çıktısı olmalıdır).
 6. Ana sayfa (`/`) ve yönetim paneli (`/admin`) yapılandırma tamamlandığında kullanılabilir.
-7. Apache üzerinde `AllowOverride All` ayarlı olduğundan ve `mod_rewrite` eklentisinin aktif bulunduğundan emin olun; depo ile birlikte gelen `public/.htaccess` dosyası tüm istekleri `public/index.php` dosyasına yönlendirir. Hosting ortamınız gizli dosyaları kopyalamıyorsa `.htaccess` içeriğini README'nin alt bölümündeki örnekle eşleştirerek manuel şekilde oluşturmalısınız.
+7. Apache üzerinde `AllowOverride All` ayarlı olduğundan ve `mod_rewrite` eklentisinin aktif bulunduğundan emin olun; depo ile birlikte gelen kök dizin `.htaccess` dosyası trafiği `public/` altına yönlendirir, `public/.htaccess` ise uygulamanın ön denetleyicisine (front controller) akışı sağlar. Hosting ortamınız gizli dosyaları kopyalamıyorsa README'deki örnek kuralları kullanarak bu dosyaları manuel olarak oluşturun.
 
 ## Klasör Ağacı
 
 ```
+.htaccess
 app/
   Controllers/
     Admin/
@@ -140,9 +141,23 @@ tests/{test_csrf.php,test_rate_limiter.php,test_crypto.php,test_totp.php,test_ca
 
 Kurulumdan sonra demo ortamını hızlıca denemek için aşağıdaki SQL betiğini çalıştırabilirsiniz. Şifre alanları PHP'nin `password_hash()` fonksiyonu ile üretilmiştir.
 
-## Apache `.htaccess` Örneği
+## Apache `.htaccess` Örnekleri
 
-Aşağıdaki içerik `public/.htaccess` dosyasına dahildir. Sunucunuz dosyayı kopyalamadıysa aynı kuralları manuel olarak ekleyin:
+**Kök dizin (.htaccess)** – trafik `public/` altına yönlendirilir:
+
+```
+RewriteEngine On
+
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+RewriteRule ^(.*)$ public/$1 [L]
+
+FallbackResource /public/index.php
+```
+
+**public/.htaccess** – istekleri front controller'a aktarır:
 
 ```
 <IfModule mod_rewrite.c>

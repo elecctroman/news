@@ -16,27 +16,36 @@ class SecurityScanner
         $configFile = $this->rootPath . '/config/config.php';
         if (is_file($configFile)) {
             $config = require $configFile;
-            $database = $config['database'] ?? ($config['db'] ?? []);
-            $dsn = $database['dsn'] ?? '';
-            $user = $database['user'] ?? '';
-            $key = $config['security']['encryption_key'] ?? '';
+
+            $dbDefaults = [
+                'host' => '',
+                'dbname' => '',
+                'user' => '',
+                'pass' => '',
+                'charset' => 'utf8mb4',
+            ];
+
+            $dbConfig = array_merge($dbDefaults, array_intersect_key($config, $dbDefaults));
 
             $configIssues = [];
-            if ($dsn === '') {
-                $configIssues[] = 'Veritabanı DSN değeri boş.';
+            if ($dbConfig['host'] === '') {
+                $configIssues[] = 'Veritabanı sunucu adresi boş.';
             }
-            if ($user === '') {
+            if ($dbConfig['dbname'] === '') {
+                $configIssues[] = 'Veritabanı adı tanımlanmalı.';
+            }
+            if ($dbConfig['user'] === '') {
                 $configIssues[] = 'Veritabanı kullanıcı adı tanımlanmamış.';
             }
-            if ($key === '') {
-                $configIssues[] = 'Şifreleme anahtarı boş.';
+            if ($dbConfig['pass'] === '') {
+                $configIssues[] = 'Veritabanı parolası eksik.';
             }
 
             $status = $configIssues === [] ? 'pass' : 'warn';
             $results[] = [
                 'name' => 'config.php doğrulaması',
                 'status' => $status,
-                'message' => $configIssues === [] ? 'Yapılandırma değerleri tanımlanmış görünüyor.' : implode(' ', $configIssues),
+                'message' => $configIssues === [] ? 'Veritabanı yapılandırması tanımlanmış görünüyor.' : implode(' ', $configIssues),
             ];
         } else {
             $results[] = [

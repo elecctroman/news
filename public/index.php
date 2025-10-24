@@ -32,7 +32,78 @@ session_start([
     'cookie_samesite' => 'Lax',
 ]);
 
-$config = require dirname(__DIR__) . '/config/config.php';
+$rawConfig = require dirname(__DIR__) . '/config/config.php';
+
+$dbDefaults = [
+    'host' => '',
+    'dbname' => '',
+    'user' => '',
+    'pass' => '',
+    'charset' => 'utf8mb4',
+];
+
+$dbConfig = array_merge($dbDefaults, array_intersect_key($rawConfig, $dbDefaults));
+
+$appConfig = [
+    'name' => $rawConfig['app_name'] ?? 'Dijital Mağaza',
+    'url' => $rawConfig['app_url'] ?? 'http://localhost',
+    'locale' => $rawConfig['locale'] ?? 'tr_TR',
+    'timezone' => $rawConfig['timezone'] ?? 'Europe/Istanbul',
+];
+
+$mailFrom = $rawConfig['mail_from'] ?? 'no-reply@' . (parse_url($appConfig['url'], PHP_URL_HOST) ?: 'localhost');
+
+$dsn = '';
+if ($dbConfig['host'] !== '' && $dbConfig['dbname'] !== '') {
+    $charset = $dbConfig['charset'] !== '' ? $dbConfig['charset'] : 'utf8mb4';
+    $dsn = sprintf('mysql:host=%s;dbname=%s;charset=%s', $dbConfig['host'], $dbConfig['dbname'], $charset);
+}
+
+$config = [
+    'app' => $appConfig,
+    'database' => [
+        'dsn' => $dsn,
+        'user' => $dbConfig['user'],
+        'pass' => $dbConfig['pass'],
+        'options' => [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ],
+    ],
+    'mail' => [
+        'from' => $mailFrom,
+    ],
+    'security' => [
+        'encryption_key' => hash('sha256', implode('|', [
+            $dbConfig['user'],
+            $dbConfig['pass'],
+            $dbConfig['dbname'],
+            $dbConfig['host'],
+        ]), true),
+        'headers' => [
+            'csp' => "default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'",
+            'hsts' => true,
+            'x_frame_options' => 'SAMEORIGIN',
+            'x_content_type_options' => 'nosniff',
+            'referrer_policy' => 'no-referrer-when-downgrade',
+            'permissions_policy' => 'geolocation=()'
+        ],
+        'rate_limits' => [
+            'login' => ['max_attempts' => 5, 'decay_seconds' => 300],
+            'payment' => ['max_attempts' => 10, 'decay_seconds' => 60],
+        ],
+    ],
+    'paths' => [
+        'storage' => realpath(__DIR__ . '/../storage') ?: __DIR__ . '/../storage',
+        'logs' => __DIR__ . '/../storage/logs',
+        'cache' => __DIR__ . '/../storage/cache',
+        'backups' => __DIR__ . '/../storage/backups',
+        'uploads' => __DIR__ . '/../storage/uploads',
+    ],
+];
+
+$config['db'] = &$config['database'];
 
 date_default_timezone_set($config['app']['timezone'] ?? 'UTC');
 if (isset($config['app']['locale'])) {
@@ -56,7 +127,7 @@ function renderSetupNotice(array $issues, ?Throwable $error = null): void
     echo '.error{margin-top:24px;font-size:14px;color:#b91c1c;background:#fee2e2;padding:12px 16px;border-radius:8px;}</style>';
     echo '</head><body><div class="card">';
     echo '<h1>Yapılandırma Gerekli</h1>';
-    echo '<p><strong>config/config.php</strong> dosyasını düzenleyerek veritabanı ve şifreleme ayarlarını tamamlayın.</p>';
+    echo '<p><strong>config/config.php</strong> dosyasını düzenleyerek veritabanı bağlantı ayarlarını tamamlayın.</p>';
     if ($issues !== []) {
         echo '<ul>';
         foreach ($issues as $issue) {
@@ -64,8 +135,8 @@ function renderSetupNotice(array $issues, ?Throwable $error = null): void
         }
         echo '</ul>';
     }
-    echo '<p>Örnek DSN: <code>mysql:host=127.0.0.1;dbname=epin;charset=utf8mb4</code></p>';
-    echo '<p>Şifreleme anahtarı olarak 32 baytlık bir değer veya <code>base64:</code> ile başlayan kodlanmış anahtar kullanın.</p>';
+    echo '<p>Örnek değerler:</p>';
+    echo '<pre><code>' . htmlspecialchars("return [\n    'host' => '127.0.0.1',\n    'dbname' => 'app',\n    'user' => 'app',\n    'pass' => 'secret',\n    'charset' => 'utf8mb4',\n];", ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</code></pre>';
     if ($error !== null) {
         echo '<div class="error"><strong>Teknik detay:</strong> ' . htmlspecialchars($error->getMessage(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</div>';
     }
@@ -74,19 +145,21 @@ function renderSetupNotice(array $issues, ?Throwable $error = null): void
 }
 
 $issues = [];
-$database = $config['database'] ?? ($config['db'] ?? []);
-$dbDsn = $database['dsn'] ?? '';
-$dbUser = $database['user'] ?? '';
-$encryptionKey = $config['security']['encryption_key'] ?? '';
+$database = $config['database'];
+$dbDsn = $database['dsn'];
+$dbUser = $database['user'];
 
-if ($dbDsn === '') {
-    $issues[] = 'Veritabanı DSN değeri boş.';
+if ($dbConfig['host'] === '') {
+    $issues[] = 'Veritabanı sunucu adresini tanımlayın.';
 }
-if ($dbUser === '') {
+if ($dbConfig['dbname'] === '') {
+    $issues[] = 'Veritabanı adı boş olamaz.';
+}
+if ($database['user'] === '') {
     $issues[] = 'Veritabanı kullanıcı adı tanımlanmalı.';
 }
-if ($encryptionKey === '') {
-    $issues[] = 'Şifreleme anahtarını tanımlayın (32 bayt veya base64 kodlu).';
+if ($database['pass'] === '') {
+    $issues[] = 'Veritabanı parolasını girin.';
 }
 
 if ($issues !== []) {
