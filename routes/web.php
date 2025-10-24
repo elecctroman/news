@@ -1,0 +1,62 @@
+<?php
+use App\Controllers\Front\HomeController;
+use App\Controllers\Front\CatalogController;
+use App\Controllers\Front\ProductController;
+use App\Controllers\Front\AuthController;
+use App\Controllers\Front\AccountController;
+use App\Controllers\Front\CartController;
+use App\Controllers\Front\CheckoutController;
+use App\Controllers\Front\PaymentController;
+use App\Controllers\Front\TicketController;
+use App\Controllers\Admin\DashboardController;
+use App\Controllers\Admin\ProductController as AdminProductController;
+use App\Controllers\Admin\OrderController as AdminOrderController;
+use App\Controllers\Admin\TicketController as AdminTicketController;
+use App\Controllers\Admin\ReportController as AdminReportController;
+use App\Controllers\Admin\MaintenanceController as AdminMaintenanceController;
+use App\Middlewares\AuthGuard;
+use App\Middlewares\AdminGuard;
+
+$router->get('/', [HomeController::class, 'index']);
+$router->get('/katalog', [CatalogController::class, 'index']);
+$router->get('/urun/{slug}', [ProductController::class, 'show']);
+$router->post('/cart/add', [CartController::class, 'add']);
+$router->get('/cart', [CartController::class, 'index']);
+$router->post('/cart/update', [CartController::class, 'update']);
+$router->post('/cart/remove', [CartController::class, 'remove']);
+$router->post('/cart/coupon', [CartController::class, 'applyCoupon']);
+$router->get('/checkout', [CheckoutController::class, 'index'], [AuthGuard::class]);
+$router->post('/checkout', [CheckoutController::class, 'process'], [AuthGuard::class]);
+$router->get('/order-success', [CheckoutController::class, 'success'], [AuthGuard::class]);
+$router->match('/payment/mock', [PaymentController::class, 'mock'], ['GET', 'POST']);
+
+$router->match('/login', [AuthController::class, 'login'], ['GET', 'POST']);
+$router->match('/register', [AuthController::class, 'register'], ['GET', 'POST']);
+$router->get('/logout', [AuthController::class, 'logout'], [AuthGuard::class]);
+$router->match('/verify-email', [AuthController::class, 'verifyEmail'], ['GET']);
+$router->match('/forgot-password', [AuthController::class, 'requestReset'], ['GET', 'POST']);
+$router->match('/reset-password', [AuthController::class, 'resetPassword'], ['GET', 'POST']);
+$router->match('/two-factor-challenge', [AuthController::class, 'twoFactorChallenge'], ['GET', 'POST']);
+
+$router->get('/account', [AccountController::class, 'index'], [AuthGuard::class]);
+$router->match('/account/security', [AccountController::class, 'security'], ['GET', 'POST'], [AuthGuard::class]);
+$router->get('/account/orders', [AccountController::class, 'orders'], [AuthGuard::class]);
+$router->get('/account/orders/{id}', [AccountController::class, 'orderDetail'], [AuthGuard::class]);
+$router->get('/account/orders/{id}/invoice', [AccountController::class, 'downloadInvoice'], [AuthGuard::class]);
+$router->get('/account/orders/{id}/invoice.csv', [AccountController::class, 'downloadInvoiceCsv'], [AuthGuard::class]);
+$router->post('/account/orders/link', [AccountController::class, 'generateLink'], [AuthGuard::class]);
+$router->get('/account/delivery/{token}', [AccountController::class, 'viewDelivery']);
+$router->get('/account/tickets', [TicketController::class, 'index'], [AuthGuard::class]);
+$router->match('/account/tickets/new', [TicketController::class, 'create'], ['GET', 'POST'], [AuthGuard::class]);
+$router->match('/account/tickets/{id}', [TicketController::class, 'show'], ['GET', 'POST'], [AuthGuard::class]);
+$router->get('/account/tickets/attachments/{id}', [TicketController::class, 'downloadAttachment'], [AuthGuard::class]);
+
+$router->get('/admin', [DashboardController::class, 'index'], [AdminGuard::class]);
+$router->match('/admin/products', [AdminProductController::class, 'index'], ['GET', 'POST'], [AdminGuard::class]);
+$router->match('/admin/orders', [AdminOrderController::class, 'index'], ['GET', 'POST'], [AdminGuard::class]);
+$router->get('/admin/tickets', [AdminTicketController::class, 'index'], [AdminGuard::class]);
+$router->match('/admin/tickets/{id}', [AdminTicketController::class, 'show'], ['GET', 'POST'], [AdminGuard::class]);
+$router->get('/admin/tickets/attachments/{id}', [AdminTicketController::class, 'downloadAttachment'], [AdminGuard::class]);
+$router->get('/admin/reports', [AdminReportController::class, 'index'], [AdminGuard::class]);
+$router->get('/admin/reports/export', [AdminReportController::class, 'export'], [AdminGuard::class]);
+$router->match('/admin/maintenance', [AdminMaintenanceController::class, 'index'], ['GET', 'POST'], [AdminGuard::class]);

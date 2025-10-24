@@ -1,0 +1,7 @@
+storage/cache/*.json
+storage/logs/*.log
+storage/backups/*.sql
+storage/backups/*.zip
+storage/temp/*
+storage/uploads/tickets/*
+!storage/uploads/tickets/.gitkeep
