@@ -1,4 +1,18 @@
-RewriteEngine On
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^ index.php [QSA,L]
+# Enable URL rewriting so all requests funnel through public/index.php
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Allow direct access to existing files and directories
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Forward everything else to the front controller
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# Graceful fallback when mod_rewrite is unavailable
+<IfModule !mod_rewrite.c>
+    FallbackResource /index.php
+</IfModule>

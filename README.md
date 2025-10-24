@@ -22,6 +22,7 @@ Bu depo, PHP 8.2, vanilla JavaScript ve CSS kullanarak güvenli bir dijital ür�
 4. MySQL/MariaDB veritabanınızı oluşturun ve `scripts/schema.sql` dosyasını çalıştırarak tabloları kurun (`mysql -u root -p epin < scripts/schema.sql`).
 5. En az bir yönetici hesabı eklemek için aşağıdaki "Örnek Veriler" bölümündeki SQL betiğini çalıştırabilir veya kendi kayıtlarınızı oluşturabilirsiniz (şifreler PHP'nin `password_hash()` çıktısı olmalıdır).
 6. Ana sayfa (`/`) ve yönetim paneli (`/admin`) yapılandırma tamamlandığında kullanılabilir.
+7. Apache üzerinde `AllowOverride All` ayarlı olduğundan ve `mod_rewrite` eklentisinin aktif bulunduğundan emin olun; depo ile birlikte gelen `public/.htaccess` dosyası tüm istekleri `public/index.php` dosyasına yönlendirir. Hosting ortamınız gizli dosyaları kopyalamıyorsa `.htaccess` içeriğini README'nin alt bölümündeki örnekle eşleştirerek manuel şekilde oluşturmalısınız.
 
 ## Klasör Ağacı
 
@@ -138,6 +139,27 @@ tests/{test_csrf.php,test_rate_limiter.php,test_crypto.php,test_totp.php,test_ca
 ## Örnek Veriler
 
 Kurulumdan sonra demo ortamını hızlıca denemek için aşağıdaki SQL betiğini çalıştırabilirsiniz. Şifre alanları PHP'nin `password_hash()` fonksiyonu ile üretilmiştir.
+
+## Apache `.htaccess` Örneği
+
+Aşağıdaki içerik `public/.htaccess` dosyasına dahildir. Sunucunuz dosyayı kopyalamadıysa aynı kuralları manuel olarak ekleyin:
+
+```
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    FallbackResource /index.php
+</IfModule>
+```
 
 ```sql
 INSERT INTO roles (id, name) VALUES (1, 'super_admin') ON DUPLICATE KEY UPDATE name = VALUES(name);
