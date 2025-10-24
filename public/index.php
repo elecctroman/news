@@ -34,6 +34,11 @@ session_start([
 
 $config = require dirname(__DIR__) . '/config/config.php';
 
+date_default_timezone_set($config['app']['timezone'] ?? 'UTC');
+if (isset($config['app']['locale'])) {
+    setlocale(LC_ALL, $config['app']['locale'] . '.UTF-8', $config['app']['locale']);
+}
+
 /**
  * Yapılandırma eksikse veya hatalıysa kullanıcıya gösterilecek mesaj.
  *
@@ -69,8 +74,9 @@ function renderSetupNotice(array $issues, ?Throwable $error = null): void
 }
 
 $issues = [];
-$dbDsn = $config['db']['dsn'] ?? '';
-$dbUser = $config['db']['user'] ?? '';
+$database = $config['database'] ?? ($config['db'] ?? []);
+$dbDsn = $database['dsn'] ?? '';
+$dbUser = $database['user'] ?? '';
 $encryptionKey = $config['security']['encryption_key'] ?? '';
 
 if ($dbDsn === '') {
@@ -87,21 +93,34 @@ if ($issues !== []) {
     renderSetupNotice($issues);
 }
 
-header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'");
-header('X-Content-Type-Options: nosniff');
-header('X-Frame-Options: SAMEORIGIN');
-header('Referrer-Policy: no-referrer-when-downgrade');
-header('Permissions-Policy: geolocation=()');
-if (!empty($_SERVER['HTTPS'])) {
+$securityHeaders = $config['security']['headers'] ?? [];
+if (!empty($securityHeaders['csp'])) {
+    header('Content-Security-Policy: ' . $securityHeaders['csp']);
+}
+if (!empty($securityHeaders['x_content_type_options'])) {
+    header('X-Content-Type-Options: ' . $securityHeaders['x_content_type_options']);
+}
+if (!empty($securityHeaders['x_frame_options'])) {
+    header('X-Frame-Options: ' . $securityHeaders['x_frame_options']);
+}
+if (!empty($securityHeaders['referrer_policy'])) {
+    header('Referrer-Policy: ' . $securityHeaders['referrer_policy']);
+}
+if (!empty($securityHeaders['permissions_policy'])) {
+    header('Permissions-Policy: ' . $securityHeaders['permissions_policy']);
+}
+if (($securityHeaders['hsts'] ?? false) && !empty($_SERVER['HTTPS'])) {
     header('Strict-Transport-Security: max-age=63072000; includeSubDomains');
 }
 
 $pdo = null;
 try {
-    $pdo = new PDO($dbDsn, $dbUser, $config['db']['pass'] ?? '', [
+    $defaultOptions = [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    ]);
+    ];
+    $pdoOptions = ($database['options'] ?? []) + $defaultOptions;
+    $pdo = new PDO($dbDsn, $dbUser, $database['pass'] ?? '', $pdoOptions);
 } catch (Throwable $e) {
     renderSetupNotice(['Veritabanı bağlantısı başarısız oldu.'], $e);
 }

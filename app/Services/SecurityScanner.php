@@ -16,8 +16,9 @@ class SecurityScanner
         $configFile = $this->rootPath . '/config/config.php';
         if (is_file($configFile)) {
             $config = require $configFile;
-            $dsn = $config['db']['dsn'] ?? '';
-            $user = $config['db']['user'] ?? '';
+            $database = $config['database'] ?? ($config['db'] ?? []);
+            $dsn = $database['dsn'] ?? '';
+            $user = $database['user'] ?? '';
             $key = $config['security']['encryption_key'] ?? '';
 
             $configIssues = [];
